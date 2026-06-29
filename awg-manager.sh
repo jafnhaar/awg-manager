@@ -155,7 +155,8 @@ function init {
     AWG_S3=$(( RANDOM % 65 ))
     AWG_S4=$(( RANDOM % 33 ))
 
-    AWG_I1=$(od -vAn -N28 -tx1 < /dev/urandom | tr -d ' \n')
+    # Generate AmneziaWG 2.0 CPS Format
+    AWG_I1="<b 0x$(od -vAn -N3 -tx1 < /dev/urandom | tr -d ' \n')><rc $(( (RANDOM % 11) + 5 ))><t><r $(( (RANDOM % 31) + 20 ))>"
 
 cat <<EOF > "$SERVER_NAME.conf"
 [Interface]
@@ -215,7 +216,7 @@ function create {
     AWG_S2=$(grep -Po '(?<=^S2 = )\d+' "$SERVER_NAME.conf")
     AWG_S3=$(grep -Po '(?<=^S3 = )\d+' "$SERVER_NAME.conf")
     AWG_S4=$(grep -Po '(?<=^S4 = )\d+' "$SERVER_NAME.conf")
-    AWG_I1=$(grep -Po '(?<=^I1 = )[a-fA-F0-9]+' "$SERVER_NAME.conf")
+    AWG_I1=$(grep -Po '(?<=^I1 = ).*' "$SERVER_NAME.conf")
 
 cat <<EOF > "keys/${USER}/${USER}.conf"
 [Interface]
