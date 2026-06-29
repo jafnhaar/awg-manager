@@ -137,25 +137,52 @@ function generate_awg_params {
         "wechat.com" "qq.com" "baidu.com" "taobao.com" "aljazeera.net" "binance.com"
     )
 
-
     local RANDOM_DOMAIN=${DOMAINS[$RANDOM % ${#DOMAINS[@]}]}
+
+    # Random transaction ID (2 bytes)
     local TRANS_ID=$(od -vAn -N2 -tx1 < /dev/urandom | tr -d ' \n')
-    local DNS_HEADER="${TRANS_ID}01000001000000000000"
+
+    # DNS Response flags: 0x8180 (Standard response, recursion desired+available)
+    local DNS_FLAGS="8180"
+
+    # Header: QDCOUNT=1, ANCOUNT=1, NSCOUNT=0, ARCOUNT=0
+    local DNS_HEADER="${TRANS_ID}${DNS_FLAGS}00010001000000000000"
+
+    # Encode QNAME
     local QNAME_HEX=""
     local IFS='.'
     read -ra ADDR <<< "$RANDOM_DOMAIN"
     for part in "${ADDR[@]}"; do
         local len_hex=$(printf "%02x" ${#part})
-        # Using od instead of xxd ensures standard bash portability
         local str_hex=$(echo -n "$part" | od -vAn -tx1 | tr -d ' \n')
         QNAME_HEX="${QNAME_HEX}${len_hex}${str_hex}"
     done
-
     QNAME_HEX="${QNAME_HEX}00"
-    local DNS_TAIL="00010001"
+
+    # Question section tail: QTYPE=A (0x0001), QCLASS=IN (0x0001)
+    local DNS_QTAIL="00010001"
+
+    # Answer section:
+    # Name pointer back to offset 12 (0xc00c)
+    local ANS_NAME="c00c"
+    # TYPE=A, CLASS=IN
+    local ANS_TYPE_CLASS="00010001"
+    # TTL: randomized between ~60s and ~3600s
+    local TTL_VAL=$(( (RANDOM % 3541) + 60 ))
+    local ANS_TTL=$(printf "%08x" $TTL_VAL)
+    # RDLENGTH=4
+    local ANS_RDLEN="0004"
+    # RDATA: random IPv4 (avoiding 0.x and 255.x)
+    local IP1=$(( (RANDOM % 223) + 1 ))
+    local IP2=$(( RANDOM % 256 ))
+    local IP3=$(( RANDOM % 256 ))
+    local IP4=$(( (RANDOM % 254) + 1 ))
+    local ANS_RDATA=$(printf "%02x%02x%02x%02x" $IP1 $IP2 $IP3 $IP4)
+
+    local DNS_ANSWER="${ANS_NAME}${ANS_TYPE_CLASS}${ANS_TTL}${ANS_RDLEN}${ANS_RDATA}"
 
     # Export the final I1 variable
-    AWG_I1="<b 0x${DNS_HEADER}${QNAME_HEX}${DNS_TAIL}>"
+    AWG_I1="<b 0x${TRANS_ID}${DNS_FLAGS}><r 2><b 0x00010001000000000000${QNAME_HEX}${DNS_QTAIL}${DNS_ANSWER}>"
 }
 
 function init {
