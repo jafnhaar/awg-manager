@@ -115,6 +115,49 @@ function remove_user_from_server {
     fi
 }
 
+function generate_awg_params {
+    # Generate random H1-H4 Parameters
+    AWG_H1=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n')
+    AWG_H2=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); while [ "$AWG_H2" = "$AWG_H1" ]; do AWG_H2=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); done
+    AWG_H3=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); while [ "$AWG_H3" = "$AWG_H1" ] || [ "$AWG_H3" = "$AWG_H2" ]; do AWG_H3=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); done
+    AWG_H4=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); while [ "$AWG_H4" = "$AWG_H1" ] || [ "$AWG_H4" = "$AWG_H2" ] || [ "$AWG_H4" = "$AWG_H3" ]; do AWG_H4=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); done
+
+    # Generate random S1-S4 Parameters
+    AWG_S1=$(( RANDOM % 65 ))
+    AWG_S2=$(( RANDOM % 65 ))
+    AWG_S3=$(( RANDOM % 65 ))
+    AWG_S4=$(( RANDOM % 33 ))
+
+    local DOMAINS=(
+        "captive.apple.com" "time.apple.com" "connectivitycheck.gstatic.com"
+        "clients3.google.com" "msftconnecttest.com" "dns.msftncsi.com" "ntp.ubuntu.com"
+        "cloudflare.com" "ajax.googleapis.com" "cdn.jsdelivr.net" "fonts.gstatic.com"
+        "s3.amazonaws.com" "fastly.net" "google-analytics.com" "graph.instagram.com"
+        "api.twitter.com" "push.apple.com" "ya.ru" "vk.com" "mail.ru" "ok.ru"
+        "wechat.com" "qq.com" "baidu.com" "taobao.com" "aljazeera.net" "binance.com"
+    )
+
+
+    local RANDOM_DOMAIN=${DOMAINS[$RANDOM % ${#DOMAINS[@]}]}
+    local TRANS_ID=$(od -vAn -N2 -tx1 < /dev/urandom | tr -d ' \n')
+    local DNS_HEADER="${TRANS_ID}01000001000000000000"
+    local QNAME_HEX=""
+    local IFS='.'
+    read -ra ADDR <<< "$RANDOM_DOMAIN"
+    for part in "${ADDR[@]}"; do
+        local len_hex=$(printf "%02x" ${#part})
+        # Using od instead of xxd ensures standard bash portability
+        local str_hex=$(echo -n "$part" | od -vAn -tx1 | tr -d ' \n')
+        QNAME_HEX="${QNAME_HEX}${len_hex}${str_hex}"
+    done
+
+    QNAME_HEX="${QNAME_HEX}00"
+    local DNS_TAIL="00010001"
+
+    # Export the final I1 variable
+    AWG_I1="<b 0x${DNS_HEADER}${QNAME_HEX}${DNS_TAIL}>"
+}
+
 function init {
     if [ -z "$SERVER_ENDPOINT" ]; then
         echo "ERROR: Server required" >&2
@@ -144,19 +187,7 @@ function init {
 
     SERVER_PVT_KEY=$(cat "keys/$SERVER_NAME/private.key")
 
-    # Generate random AmneziaWG Parameters
-    AWG_H1=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n')
-    AWG_H2=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); while [ "$AWG_H2" = "$AWG_H1" ]; do AWG_H2=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); done
-    AWG_H3=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); while [ "$AWG_H3" = "$AWG_H1" ] || [ "$AWG_H3" = "$AWG_H2" ]; do AWG_H3=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); done
-    AWG_H4=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); while [ "$AWG_H4" = "$AWG_H1" ] || [ "$AWG_H4" = "$AWG_H2" ] || [ "$AWG_H4" = "$AWG_H3" ]; do AWG_H4=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); done
-
-    AWG_S1=$(( RANDOM % 65 ))
-    AWG_S2=$(( RANDOM % 65 ))
-    AWG_S3=$(( RANDOM % 65 ))
-    AWG_S4=$(( RANDOM % 33 ))
-
-    # Generate AmneziaWG 2.0 CPS Format
-    AWG_I1="<b 0x$(od -vAn -N3 -tx1 < /dev/urandom | tr -d ' \n')><rc $(( (RANDOM % 11) + 5 ))><t><r $(( (RANDOM % 31) + 20 ))>"
+    generate_awg_params
 
 cat <<EOF > "$SERVER_NAME.conf"
 [Interface]
@@ -292,6 +323,5 @@ if [ $PRINT_USER_CONFIG ]; then
 elif [ $PRINT_QR_CODE ]; then
     qrencode -t ansiutf8 < "keys/${USER}/${USER}.conf"
 fi
-
 
 exit 0
