@@ -25,6 +25,11 @@ colorized_echo() {
     esac
 }
 
+usage() {
+    echo "Usage: $0 {install}"
+    exit 1
+}
+
 installing() {
     check_running_as_root
     detect_os
@@ -34,27 +39,30 @@ installing() {
     install_awg_awg_tools
     install_awg_manager
 }
+
 check_running_as_root() {
     if [ "$(id -u)" != "0" ]; then
         colorized_echo red "This command must be run as root."
         exit 1
     fi
 }
+
 detect_os() {
     # Detect the operating system
     if [ -f /etc/lsb-release ]; then
         OS=$(lsb_release -si)
-        elif [ -f /etc/os-release ]; then
+    elif [ -f /etc/os-release ]; then
         OS=$(awk -F= '/^NAME/{print $2}' /etc/os-release | tr -d '"')
-        elif [ -f /etc/redhat-release ]; then
+    elif [ -f /etc/redhat-release ]; then
         OS=$(cat /etc/redhat-release | awk '{print $1}')
-        elif [ -f /etc/arch-release ]; then
+    elif [ -f /etc/arch-release ]; then
         OS="Arch"
     else
         colorized_echo red "Unsupported operating system"
         exit 1
     fi
 }
+
 detect_and_update_package_manager() {
     colorized_echo blue "Updating package manager"
     if [[ "$OS" == "Ubuntu"* ]] || [[ "$OS" == "Debian"* ]]; then
@@ -65,8 +73,9 @@ detect_and_update_package_manager() {
         exit 1
     fi
 }
+
 install_package () {
-    if [ -z $PKG_MANAGER ]; then
+    if [ -z "$PKG_MANAGER" ]; then
         detect_and_update_package_manager
     fi
     colorized_echo blue "Installing Package"
@@ -98,6 +107,7 @@ install_go() {
     cd "$TEMP_DIR"
     wget -q "https://go.dev/dl/${GO_ARCHIVE}" || {
         colorized_echo red "Failed to download Go"
+        cd /tmp
         rm -rf "$TEMP_DIR"
         exit 1
     }
@@ -105,11 +115,13 @@ install_go() {
     rm -rf /usr/local/go
     tar -C /usr/local -xzf "$GO_ARCHIVE" || {
         colorized_echo red "Failed to extract Go"
+        cd /tmp
         rm -rf "$TEMP_DIR"
         exit 1
     }
 
-    # Cleanup temp directory
+    # Step out of temp directory before cleanup
+    cd /tmp
     rm -rf "$TEMP_DIR"
 
     # Add to PATH
@@ -125,6 +137,7 @@ install_go() {
         exit 1
     fi
 }
+
 install_awg_awg_tools() {
     # Check if awg and amneziawg-go are already installed
     if command -v awg &> /dev/null && command -v amneziawg-go &> /dev/null; then
@@ -136,6 +149,7 @@ install_awg_awg_tools() {
     if ! command -v amneziawg-go &> /dev/null; then
         colorized_echo blue "Installing amneziawg-go..."
 
+        cd /tmp
         rm -rf /opt/amnezia-go
         git clone https://github.com/amnezia-vpn/amneziawg-go.git /opt/amnezia-go || {
             colorized_echo red "Failed to clone amneziawg-go"
@@ -151,7 +165,8 @@ install_awg_awg_tools() {
         cp /opt/amnezia-go/amneziawg-go /usr/bin/amneziawg-go
         chmod +x /usr/bin/amneziawg-go
 
-        # Cleanup
+        # Step out before cleanup
+        cd /tmp
         rm -rf /opt/amnezia-go
 
         if command -v amneziawg-go &> /dev/null; then
@@ -168,6 +183,7 @@ install_awg_awg_tools() {
     if ! command -v awg &> /dev/null; then
         colorized_echo blue "Installing awg-tools..."
 
+        cd /tmp
         rm -rf /opt/amnezia-tools
         git clone https://github.com/amnezia-vpn/amneziawg-tools.git /opt/amnezia-tools || {
             colorized_echo red "Failed to clone amneziawg-tools"
@@ -184,7 +200,8 @@ install_awg_awg_tools() {
             exit 1
         }
 
-        # Cleanup
+        # Step out before cleanup
+        cd /tmp
         rm -rf /opt/amnezia-tools
 
         if command -v awg &> /dev/null; then
@@ -197,6 +214,7 @@ install_awg_awg_tools() {
         colorized_echo green "awg-tools already installed"
     fi
 }
+
 install_awg_manager() {
     local AWG_DIR="/etc/amnezia/amneziawg"
     local AWG_SCRIPT="${AWG_DIR}/awg-manager.sh"
@@ -227,10 +245,12 @@ install_awg_manager() {
         exit 1
     fi
 }
+
 case "$1" in
     install)
-    shift; installing "$@";;
+        shift; installing "$@"
+        ;;
     *)
-    usage;;
+        usage
+        ;;
 esac
-
