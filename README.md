@@ -26,7 +26,7 @@ Options:
 Run server (bare-metal or VPS) with Ubuntu 20.02, 22.02
 
 ```
-sudo bash -c "$(curl -sL https://raw.githubusercontent.com/bkeenke/awg-manager/master/init.sh)" @ install
+sudo bash -c "$(curl -sL https://raw.githubusercontent.com/jafnhaar/awg-manager/master/init.sh)" @ install
 ```
 Or
 
@@ -86,5 +86,3 @@ When an interface is running, you may use amnezia-wg-tools `awg-quick`  to confi
  - Add your user: `./awg-manager.sh -c -u my_user -p > awg-client.conf`
  - Install AmneziaVPN on the client
  - Start client with config `awg-client.conf`
-
-
