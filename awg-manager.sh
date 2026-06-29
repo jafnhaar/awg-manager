@@ -144,6 +144,19 @@ function init {
 
     SERVER_PVT_KEY=$(cat "keys/$SERVER_NAME/private.key")
 
+    # Generate random AmneziaWG Parameters
+    AWG_H1=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n')
+    AWG_H2=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); while [ "$AWG_H2" = "$AWG_H1" ]; do AWG_H2=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); done
+    AWG_H3=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); while [ "$AWG_H3" = "$AWG_H1" ] || [ "$AWG_H3" = "$AWG_H2" ]; do AWG_H3=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); done
+    AWG_H4=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); while [ "$AWG_H4" = "$AWG_H1" ] || [ "$AWG_H4" = "$AWG_H2" ] || [ "$AWG_H4" = "$AWG_H3" ]; do AWG_H4=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); done
+
+    AWG_S1=$(( RANDOM % 65 ))
+    AWG_S2=$(( RANDOM % 65 ))
+    AWG_S3=$(( RANDOM % 65 ))
+    AWG_S4=$(( RANDOM % 33 ))
+
+    AWG_I1=$(od -vAn -N28 -tx1 < /dev/urandom | tr -d ' \n')
+
 cat <<EOF > "$SERVER_NAME.conf"
 [Interface]
 Address = ${SERVER_IP_PREFIX}.1/32
@@ -154,12 +167,15 @@ PostDown = iptables -t nat -D POSTROUTING -o ${SERVER_INTERFACE} -j MASQUERADE
 Jc = 3
 Jmin = 10
 Jmax = 50
-S1 = 130
-S2 = 146
-H1 = 1330785828
-H2 = 974728806
-H3 = 274661604
-H4 = 1001776073
+S1 = ${AWG_S1}
+S2 = ${AWG_S2}
+S3 = ${AWG_S3}
+S4 = ${AWG_S4}
+H1 = ${AWG_H1}
+H2 = ${AWG_H2}
+H3 = ${AWG_H3}
+H4 = ${AWG_H4}
+I1 = ${AWG_I1}
 
 EOF
 
@@ -190,6 +206,17 @@ function create {
     USER_PSK_KEY=$(cat "keys/${USER}/psk.key")
     SERVER_PUB_KEY=$(cat "keys/$SERVER_NAME/public.key")
 
+    # Read generated AmneziaWG parameters from the server config so the client matches
+    AWG_H1=$(grep -Po '(?<=^H1 = )\d+' "$SERVER_NAME.conf")
+    AWG_H2=$(grep -Po '(?<=^H2 = )\d+' "$SERVER_NAME.conf")
+    AWG_H3=$(grep -Po '(?<=^H3 = )\d+' "$SERVER_NAME.conf")
+    AWG_H4=$(grep -Po '(?<=^H4 = )\d+' "$SERVER_NAME.conf")
+    AWG_S1=$(grep -Po '(?<=^S1 = )\d+' "$SERVER_NAME.conf")
+    AWG_S2=$(grep -Po '(?<=^S2 = )\d+' "$SERVER_NAME.conf")
+    AWG_S3=$(grep -Po '(?<=^S3 = )\d+' "$SERVER_NAME.conf")
+    AWG_S4=$(grep -Po '(?<=^S4 = )\d+' "$SERVER_NAME.conf")
+    AWG_I1=$(grep -Po '(?<=^I1 = )[a-fA-F0-9]+' "$SERVER_NAME.conf")
+
 cat <<EOF > "keys/${USER}/${USER}.conf"
 [Interface]
 PrivateKey = ${USER_PVT_KEY}
@@ -198,12 +225,15 @@ DNS = 8.8.8.8, 8.8.4.4
 Jc = 3
 Jmin = 10
 Jmax = 50
-S1 = 130
-S2 = 146
-H1 = 1330785828
-H2 = 974728806
-H3 = 274661604
-H4 = 1001776073
+S1 = ${AWG_S1}
+S2 = ${AWG_S2}
+S3 = ${AWG_S3}
+S4 = ${AWG_S4}
+H1 = ${AWG_H1}
+H2 = ${AWG_H2}
+H3 = ${AWG_H3}
+H4 = ${AWG_H4}
+I1 = ${AWG_I1}
 
 [Peer]
 PublicKey = ${SERVER_PUB_KEY}
