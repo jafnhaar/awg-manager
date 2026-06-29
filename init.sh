@@ -231,7 +231,7 @@ install_awg_manager() {
         exit 1
     }
 
-    wget -q -O "$AWG_SCRIPT" https://raw.githubusercontent.com/bkeenke/awg-manager/master/awg-manager.sh || {
+    wget -q -O "$AWG_SCRIPT" https://raw.githubusercontent.com/jafnhaar/awg-manager/master/awg-manager.sh || {
         colorized_echo red "Failed to download awg-manager.sh"
         exit 1
     }
