@@ -116,11 +116,18 @@ function remove_user_from_server {
 }
 
 function generate_awg_params {
-    # Generate random H1-H4 Parameters
-    AWG_H1=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n')
-    AWG_H2=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); while [ "$AWG_H2" = "$AWG_H1" ]; do AWG_H2=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); done
-    AWG_H3=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); while [ "$AWG_H3" = "$AWG_H1" ] || [ "$AWG_H3" = "$AWG_H2" ]; do AWG_H3=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); done
-    AWG_H4=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); while [ "$AWG_H4" = "$AWG_H1" ] || [ "$AWG_H4" = "$AWG_H2" ] || [ "$AWG_H4" = "$AWG_H3" ]; do AWG_H4=$(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n'); done
+    local H_MIN=5
+    local H_MAX=2147483647
+    local H_RANGE=$(( H_MAX - H_MIN + 1 ))
+
+    gen_h() {
+        echo $(( $(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n') % H_RANGE + H_MIN ))
+    }
+
+    AWG_H1=$(gen_h)
+    AWG_H2=$(gen_h); while [ "$AWG_H2" = "$AWG_H1" ]; do AWG_H2=$(gen_h); done
+    AWG_H3=$(gen_h); while [ "$AWG_H3" = "$AWG_H1" ] || [ "$AWG_H3" = "$AWG_H2" ]; do AWG_H3=$(gen_h); done
+    AWG_H4=$(gen_h); while [ "$AWG_H4" = "$AWG_H1" ] || [ "$AWG_H4" = "$AWG_H2" ] || [ "$AWG_H4" = "$AWG_H3" ]; do AWG_H4=$(gen_h); done
 
     # Generate random S1-S4 Parameters
     AWG_S1=$(( RANDOM % 65 ))
@@ -147,7 +154,6 @@ local DOMAINS=(
     "st.ozone.ru" "ir.ozone.ru" "p.ozon.ru"
     "a.wb.ru" "basket-19.wbbasket.ru" "basket-38.wbbasket.ru"
     "statcheker.yandex.ru" "static.dzeninfra.ru" "yastatic.net"
-
 
     "baidu.com" "qq.com" "wechat.com" "taobao.com"
     "aljazeera.net" "binance.com"
