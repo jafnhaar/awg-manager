@@ -32,7 +32,6 @@ umask 0077
 HOME_DIR="/etc/amnezia/amneziawg"
 SERVER_NAME="awg0"
 SERVER_IP_PREFIX="10.10.10"
-SERVER_PORT=43748
 SERVER_INTERFACE=$(ip -4 route ls | grep default | grep -Po '(?<=dev )(\S+)' | head -1)
 
 while getopts ":icdpqhLUu:I:s:" opt; do
@@ -116,6 +115,14 @@ function remove_user_from_server {
 }
 
 function generate_awg_params {
+
+    # Random number of juink packets between 1 - 10
+    AWG_JC=$(( (RANDOM % 9 ) + 1 ))
+    # Randomize minimum size between 64 - 163
+    AWG_JMIN=$(( (RANDOM % 100) + 64 ))
+    # Randomize maximum size between 500 - 999
+    AWG_JMAX=$(( (RANDOM % 500) + 500 ))
+
     local H_MIN=5
     local H_MAX=2147483647
     local H_RANGE=$(( H_MAX - H_MIN + 1 ))
@@ -236,6 +243,8 @@ function init {
 
     SERVER_PVT_KEY=$(cat "keys/$SERVER_NAME/private.key")
 
+    SERVER_PORT=$(( (RANDOM % 55000) + 10000 ))
+
     generate_awg_params
 
 cat <<EOF > "$SERVER_NAME.conf"
@@ -245,9 +254,9 @@ ListenPort = ${SERVER_PORT}
 PrivateKey = ${SERVER_PVT_KEY}
 PostUp = iptables -t nat -A POSTROUTING -o ${SERVER_INTERFACE} -j MASQUERADE
 PostDown = iptables -t nat -D POSTROUTING -o ${SERVER_INTERFACE} -j MASQUERADE
-Jc = 3
-Jmin = 10
-Jmax = 50
+Jc = ${AWG_JC}
+Jmin = ${AWG_JMIN}
+Jmax = ${AWG_JMAX}
 S1 = ${AWG_S1}
 S2 = ${AWG_S2}
 S3 = ${AWG_S3}
@@ -287,7 +296,10 @@ function create {
     USER_PSK_KEY=$(cat "keys/${USER}/psk.key")
     SERVER_PUB_KEY=$(cat "keys/$SERVER_NAME/public.key")
 
-    # Read generated AmneziaWG parameters from the server config so the client matches
+    SERVER_PORT=$(grep -Po '(?<=^ListenPort = )\d+' "$SERVER_NAME.conf")
+    AWG_JC=$(grep -Po '(?<=^Jc = )\d+' "$SERVER_NAME.conf")
+    AWG_JMIN=$(grep -Po '(?<=^Jmin = )\d+' "$SERVER_NAME.conf")
+    AWG_JMAX=$(grep -Po '(?<=^Jmax = )\d+' "$SERVER_NAME.conf")
     AWG_H1=$(grep -Po '(?<=^H1 = )\d+' "$SERVER_NAME.conf")
     AWG_H2=$(grep -Po '(?<=^H2 = )\d+' "$SERVER_NAME.conf")
     AWG_H3=$(grep -Po '(?<=^H3 = )\d+' "$SERVER_NAME.conf")
@@ -303,9 +315,9 @@ cat <<EOF > "keys/${USER}/${USER}.conf"
 PrivateKey = ${USER_PVT_KEY}
 Address = ${USER_IP}
 DNS = 8.8.8.8, 8.8.4.4
-Jc = 3
-Jmin = 10
-Jmax = 50
+Jc = ${AWG_JC}
+Jmin = ${AWG_JMIN}
+Jmax = ${AWG_JMAX}
 S1 = ${AWG_S1}
 S2 = ${AWG_S2}
 S3 = ${AWG_S3}
