@@ -128,14 +128,30 @@ function generate_awg_params {
     AWG_S3=$(( RANDOM % 65 ))
     AWG_S4=$(( RANDOM % 33 ))
 
-    local DOMAINS=(
-        "captive.apple.com" "time.apple.com" "connectivitycheck.gstatic.com"
-        "clients3.google.com" "msftconnecttest.com" "dns.msftncsi.com" "ntp.ubuntu.com"
-        "cloudflare.com" "ajax.googleapis.com" "cdn.jsdelivr.net" "fonts.gstatic.com"
-        "s3.amazonaws.com" "fastly.net" "google-analytics.com" "graph.instagram.com"
-        "api.twitter.com" "push.apple.com" "ya.ru" "vk.com" "mail.ru" "ok.ru"
-        "wechat.com" "qq.com" "baidu.com" "taobao.com" "aljazeera.net" "binance.com"
-    )
+local DOMAINS=(
+    "cloudflare.com" "ajax.googleapis.com" "cdn.jsdelivr.net" "fonts.gstatic.com"
+    "s3.amazonaws.com" "fastly.net" "akamai.net" "akamaized.net"
+    "googleapis.com" "gstatic.com" "googleusercontent.com"
+    "cloudfront.net" "azureedge.net" "windowsupdate.com"
+
+    "captive.apple.com" "time.apple.com" "connectivitycheck.gstatic.com"
+    "clients3.google.com" "msftconnecttest.com" "dns.msftncsi.com"
+    "ntp.ubuntu.com" "pool.ntp.org" "push.apple.com"
+
+    "microsoft.com" "apple.com" "amazon.com" "google.com"
+    "facebook.com" "whatsapp.net" "office.com"
+    "icloud.com" "outlook.com" "live.com"
+
+    "yandex.ru" "ya.ru" "mail.ru" "vk.com" "ok.ru"
+    "sberbank.ru" "gosuslugi.ru" "wildberries.ru"
+    "st.ozone.ru" "ir.ozone.ru" "p.ozon.ru"
+    "a.wb.ru" "basket-19.wbbasket.ru" "basket-38.wbbasket.ru"
+    "statcheker.yandex.ru" "static.dzeninfra.ru" "yastatic.net"
+
+
+    "baidu.com" "qq.com" "wechat.com" "taobao.com"
+    "aljazeera.net" "binance.com"
+)
 
     local RANDOM_DOMAIN=${DOMAINS[$RANDOM % ${#DOMAINS[@]}]}
 
