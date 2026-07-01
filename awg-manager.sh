@@ -123,18 +123,27 @@ function generate_awg_params {
     # Randomize maximum size between 500 - 999
     AWG_JMAX=$(( (RANDOM % 500) + 500 ))
 
-    local H_MIN=5
-    local H_MAX=2147483647
-    local H_RANGE=$(( H_MAX - H_MIN + 1 ))
+    gen_h_range() {
+        local MIN_BOUND=$1
+        local MAX_BOUND=$2
+        local RANGE=$(( MAX_BOUND - MIN_BOUND + 1 ))
 
-    gen_h() {
-        echo $(( $(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n') % H_RANGE + H_MIN ))
+        local val1=$(( $(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n') % RANGE + MIN_BOUND ))
+        local val2=$(( $(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n') % RANGE + MIN_BOUND ))
+
+        if [ "$val1" -lt "$val2" ]; then
+            echo "$val1-$val2"
+        elif [ "$val1" -gt "$val2" ]; then
+            echo "$val2-$val1"
+        else
+            echo "$val1-$(( val1 + 100 ))"
+        fi
     }
 
-    AWG_H1=$(gen_h)
-    AWG_H2=$(gen_h); while [ "$AWG_H2" = "$AWG_H1" ]; do AWG_H2=$(gen_h); done
-    AWG_H3=$(gen_h); while [ "$AWG_H3" = "$AWG_H1" ] || [ "$AWG_H3" = "$AWG_H2" ]; do AWG_H3=$(gen_h); done
-    AWG_H4=$(gen_h); while [ "$AWG_H4" = "$AWG_H1" ] || [ "$AWG_H4" = "$AWG_H2" ] || [ "$AWG_H4" = "$AWG_H3" ]; do AWG_H4=$(gen_h); done
+    AWG_H1=$(gen_h_range 5          499999999)
+    AWG_H2=$(gen_h_range 500000000  999999999)
+    AWG_H3=$(gen_h_range 1000000000 1499999999)
+    AWG_H4=$(gen_h_range 1500000000 2147483647)
 
     # Generate random S1-S4 Parameters
     AWG_S1=$(( RANDOM % 65 ))
@@ -300,10 +309,10 @@ function create {
     AWG_JC=$(grep -Po '(?<=^Jc = )\d+' "$SERVER_NAME.conf")
     AWG_JMIN=$(grep -Po '(?<=^Jmin = )\d+' "$SERVER_NAME.conf")
     AWG_JMAX=$(grep -Po '(?<=^Jmax = )\d+' "$SERVER_NAME.conf")
-    AWG_H1=$(grep -Po '(?<=^H1 = )\d+' "$SERVER_NAME.conf")
-    AWG_H2=$(grep -Po '(?<=^H2 = )\d+' "$SERVER_NAME.conf")
-    AWG_H3=$(grep -Po '(?<=^H3 = )\d+' "$SERVER_NAME.conf")
-    AWG_H4=$(grep -Po '(?<=^H4 = )\d+' "$SERVER_NAME.conf")
+    AWG_H1=$(grep -Po '(?<=^H1 = )[0-9\-]+' "$SERVER_NAME.conf")
+    AWG_H2=$(grep -Po '(?<=^H2 = )[0-9\-]+' "$SERVER_NAME.conf")
+    AWG_H3=$(grep -Po '(?<=^H3 = )[0-9\-]+' "$SERVER_NAME.conf")
+    AWG_H4=$(grep -Po '(?<=^H4 = )[0-9\-]+' "$SERVER_NAME.conf")
     AWG_S1=$(grep -Po '(?<=^S1 = )\d+' "$SERVER_NAME.conf")
     AWG_S2=$(grep -Po '(?<=^S2 = )\d+' "$SERVER_NAME.conf")
     AWG_S3=$(grep -Po '(?<=^S3 = )\d+' "$SERVER_NAME.conf")
