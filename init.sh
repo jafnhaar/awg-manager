@@ -35,6 +35,7 @@ installing() {
     detect_os
     detect_and_update_package_manager
     install_package
+    install_go
     install_awg_awg_tools
     install_awg_manager
 }
@@ -73,20 +74,18 @@ detect_and_update_package_manager() {
     fi
 }
 
-install_package() {
+install_package () {
     if [ -z "$PKG_MANAGER" ]; then
         detect_and_update_package_manager
     fi
-    colorized_echo blue "Installing packages"
+    colorized_echo blue "Installing Package"
     if [[ "$OS" == "Ubuntu"* ]] || [[ "$OS" == "Debian"* ]]; then
         $PKG_MANAGER -y install build-essential \
         curl \
         make \
         git \
         wget \
-        qrencode \
-        dkms \
-        linux-headers-$(uname -r)
+        qrencode
     else
         colorized_echo red "Unsupported operating system"
         exit 1
@@ -140,60 +139,44 @@ install_go() {
 }
 
 install_awg_awg_tools() {
-    if command -v awg &> /dev/null && lsmod | grep -q amneziawg; then
+    # Check if awg and amneziawg-go are already installed
+    if command -v awg &> /dev/null && command -v amneziawg-go &> /dev/null; then
         colorized_echo green "AmneziaWG already installed"
         return 0
     fi
 
-    if ! lsmod | grep -q amneziawg; then
-        colorized_echo blue "Installing amneziawg kernel module via DKMS..."
+    # Install amneziawg-go
+    if ! command -v amneziawg-go &> /dev/null; then
+        colorized_echo blue "Installing amneziawg-go..."
 
         cd /tmp
-        rm -rf /opt/amneziawg-module
-        git clone https://github.com/amnezia-vpn/amneziawg-linux-kernel-module.git /opt/amneziawg-module || {
-            colorized_echo red "Failed to clone amneziawg-linux-kernel-module"
+        rm -rf /opt/amnezia-go
+        git clone https://github.com/amnezia-vpn/amneziawg-go.git /opt/amnezia-go || {
+            colorized_echo red "Failed to clone amneziawg-go"
             exit 1
         }
 
-        cd /opt/amneziawg-module/src
-
-        # Use DKMS install — handles depmod and System.map automatically
-        make dkms-install || {
-            colorized_echo red "Failed to prepare DKMS sources"
+        cd /opt/amnezia-go
+        make || {
+            colorized_echo red "Failed to build amneziawg-go"
             exit 1
         }
 
-        dkms add -m amneziawg -v 1.0.0 || {
-            colorized_echo red "Failed to add DKMS module"
-            exit 1
-        }
+        cp /opt/amnezia-go/amneziawg-go /usr/bin/amneziawg-go
+        chmod +x /usr/bin/amneziawg-go
 
-        dkms build -m amneziawg -v 1.0.0 || {
-            colorized_echo red "Failed to build DKMS module"
-            exit 1
-        }
-
-        dkms install -m amneziawg -v 1.0.0 || {
-            colorized_echo red "Failed to install DKMS module"
-            exit 1
-        }
-
-        modprobe amneziawg || {
-            colorized_echo red "Failed to load amneziawg module"
-            exit 1
-        }
-
+        # Step out before cleanup
         cd /tmp
-        rm -rf /opt/amneziawg-module
+        rm -rf /opt/amnezia-go
 
-        if lsmod | grep -q amneziawg; then
-            colorized_echo green "amneziawg kernel module installed and loaded successfully"
+        if command -v amneziawg-go &> /dev/null; then
+            colorized_echo green "amneziawg-go installed successfully"
         else
-            colorized_echo red "amneziawg kernel module installation failed"
+            colorized_echo red "amneziawg-go installation failed"
             exit 1
         fi
     else
-        colorized_echo green "amneziawg kernel module already installed"
+        colorized_echo green "amneziawg-go already installed"
     fi
 
     # Install awg-tools
@@ -217,6 +200,7 @@ install_awg_awg_tools() {
             exit 1
         }
 
+        # Step out before cleanup
         cd /tmp
         rm -rf /opt/amnezia-tools
 
