@@ -61,17 +61,18 @@ function reload_server {
 function get_new_ip {
     declare -A IP_EXISTS
 
-    for IP in $(grep -i 'Address\s*=\s*' keys/*/*.conf | sed 's/\/[0-9]\+$//' | grep -Po '\d+$')
-    do
-        IP_EXISTS[$IP]=1
+    for conf in keys/*/*.conf; do
+        [ -e "$conf" ] || continue
+        for IP in $(grep -h -i 'Address\s*=\s*' "$conf" | sed 's/\/[0-9]\+$//' | grep -Po '\d+$' || true); do
+            IP_EXISTS[$IP]=1
+        done
     done
 
-    for IP in {2..255}
-    do
-        [ ${IP_EXISTS[$IP]} ] || break
+    for IP in {2..255}; do
+        [ -n "${IP_EXISTS[$IP]}" ] || break
     done
 
-    if [ $IP -eq 255 ]; then
+    if [ $IP -eq 255 ] && [ -n "${IP_EXISTS[$IP]}" ]; then
         echo "ERROR: can't determine new address" >&2
         exit 3
     fi
@@ -110,7 +111,7 @@ function remove_user_from_server {
 
 function generate_awg_params {
 
-    # Random number of juink packets between 1 - 10
+    # Random number of junk packets between 1 - 10
     AWG_JC=$(( (RANDOM % 9 ) + 1 ))
     # Randomize minimum size between 64 - 163
     AWG_JMIN=$(( (RANDOM % 100) + 64 ))
@@ -122,8 +123,12 @@ function generate_awg_params {
         local MAX_BOUND=$2
         local RANGE=$(( MAX_BOUND - MIN_BOUND + 1 ))
 
-        local val1=$(( $(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n') % RANGE + MIN_BOUND ))
-        local val2=$(( $(od -vAn -N4 -tu4 < /dev/urandom | tr -d ' \n') % RANGE + MIN_BOUND ))
+        # Combine two 15-bit $RANDOMs to create a secure 30-bit random number
+        local r1=$(( (RANDOM << 15) | RANDOM ))
+        local r2=$(( (RANDOM << 15) | RANDOM ))
+
+        local val1=$(( (r1 % RANGE) + MIN_BOUND ))
+        local val2=$(( (r2 % RANGE) + MIN_BOUND ))
 
         if [ "$val1" -lt "$val2" ]; then
             echo "$val1-$val2"
@@ -171,8 +176,8 @@ local DOMAINS=(
 
     local RANDOM_DOMAIN=${DOMAINS[$RANDOM % ${#DOMAINS[@]}]}
 
-    # Random transaction ID (2 bytes)
-    local TRANS_ID=$(od -vAn -N2 -tx1 < /dev/urandom | tr -d ' \n')
+    # Random transaction ID (16 bits) created purely with bash math
+    local TRANS_ID=$(printf "%04x" $(( (RANDOM << 1) | (RANDOM & 1) )))
 
     # DNS Response flags: 0x8180 (Standard response, recursion desired+available)
     local DNS_FLAGS="8180"
@@ -180,13 +185,16 @@ local DOMAINS=(
     # Header: QDCOUNT=1, ANCOUNT=1, NSCOUNT=0, ARCOUNT=0
     local DNS_HEADER="${TRANS_ID}${DNS_FLAGS}00010001000000000000"
 
-    # Encode QNAME
     local QNAME_HEX=""
     local IFS='.'
     read -ra ADDR <<< "$RANDOM_DOMAIN"
     for part in "${ADDR[@]}"; do
         local len_hex=$(printf "%02x" ${#part})
-        local str_hex=$(echo -n "$part" | od -vAn -tx1 | tr -d ' \n')
+        local str_hex=""
+        for (( i=0; i<${#part}; i++ )); do
+            printf -v hex_char "%02x" "'${part:$i:1}"
+            str_hex+="$hex_char"
+        done
         QNAME_HEX="${QNAME_HEX}${len_hex}${str_hex}"
     done
     QNAME_HEX="${QNAME_HEX}00"
