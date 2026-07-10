@@ -325,7 +325,7 @@ cat <<EOF > "keys/${USER}/${USER}.conf"
 [Interface]
 PrivateKey = ${USER_PVT_KEY}
 Address = ${USER_IP}
-DNS = 8.8.8.8, 8.8.4.4
+DNS = 1.1.1.1, 1.0.0.1
 Jc = ${AWG_JC}
 Jmin = ${AWG_JMIN}
 Jmax = ${AWG_JMAX}
